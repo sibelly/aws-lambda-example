@@ -1,16 +1,11 @@
-### AWS Lambda with Serverless Application Model (AWS SAM)
-
-#### SAM commands
+### Study project to execute local aws lambda
 
 ```
-sam local invoke HelloWorldFunction --event event.json --debug
+npm install serverless-offline --save-dev
+sls offline --help
+SLS_DEBUG=* serverless offline
+
+serverless invoke local --function HelloWorldFunction --debug
+GOARCH=amd64 GOOS=linux go build -o bootstrap main.go
+GOOS=linux GOARCH=amd64 go build -o bin/main aws-golang/main.go
 ```
-
-#### Start Tracing Platform
-
-- With [Jaeger](https://www.jaegertracing.io/)
-
-```
-docker run -d -p 4317:4317 -p 16686:16686 jaegertracing/all-in-one:latest
-```
-
