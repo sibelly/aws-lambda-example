@@ -71,5 +71,8 @@ When you are done developing, don't forget to run `serverless deploy` to deploy 
 ### Invoke local
 
 ```
-➜  aws-node-http-api-project git:(main) ✗ serverless invoke local --function hello --debug
+serverless invoke local --function hello --debug
 ```
+
+### OpenTelemetry
+https://opentelemetry.io/docs/languages/js/serverless/

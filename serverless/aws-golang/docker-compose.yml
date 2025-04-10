@@ -1,0 +1,12 @@
+services:
+  lambda:
+    image: public.ecr.aws/lambda/go:1
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: yourendpoint
+      OTEL_SERVICE_NAME: "lambda-go"
+      STAGE: "dev"
+    volumes:
+      - ./bin:/var/task
+    ports:
+      - "9000:8080"
+    command: main

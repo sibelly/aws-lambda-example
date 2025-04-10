@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -17,24 +20,27 @@ import (
 
 var tracer trace.Tracer
 
-// Inicializa o Tracer do OpenTelemetry
 func initTracer() (*sdktrace.TracerProvider, error) {
-	// Cria um exportador OTLP (envia traces para um coletor)
+	// For local testing, check if we should disable tracing
+	if os.Getenv("DISABLE_TRACING") == "true" {
+		return sdktrace.NewTracerProvider(), nil
+	}
+
 	exporter, err := otlptracegrpc.New(
 		context.Background(),
-		otlptracegrpc.WithEndpoint("localhost"), // Coletor local (ex: Jaeger/OTel Collector)
+		otlptracegrpc.WithEndpoint("yourendpoint"),
 		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("falha ao criar exportador OTLP: %v", err)
+		return nil, fmt.Errorf("failed to create OTLP exporter: %v", err)
 	}
 
-	// Configura o provedor de traces
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceName("lambda-go"),
+			semconv.DeploymentEnvironment(os.Getenv("STAGE")),
 		)),
 	)
 
@@ -44,30 +50,37 @@ func initTracer() (*sdktrace.TracerProvider, error) {
 		propagation.Baggage{},
 	))
 
-	tracer = tp.Tracer("github.com/sibelly/aws-lambda-example")
+	tracer = tp.Tracer("lambda-handler")
 	return tp, nil
 }
 
-// Handler da Lambda
-func handler(ctx context.Context) (string, error) {
-	// Cria um span customizado
+func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Start a new span for the handler execution
 	ctx, span := tracer.Start(ctx, "handler-execution")
 	defer span.End()
 
-	log.Println("Lambda executada com sucesso!")
-	return "Olá, Mundo! Traces enviados para OpenTelemetry.", nil
+	log.Println("Lambda executed successfully!")
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+		Body:       "Hello from Lambda with OpenTelemetry!",
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}, nil
 }
 
 func main() {
 	tp, err := initTracer()
 	if err != nil {
-		log.Fatalf("Erro ao inicializar OpenTelemetry: %v", err)
+		log.Fatalf("Error initializing tracer: %v", err)
 	}
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
-			log.Printf("Erro ao desligar tracer: %v", err)
+			log.Printf("Error shutting down tracer: %v", err)
 		}
 	}()
 
-	lambda.Start(handler)
+	// Wrap the lambda handler with OpenTelemetry instrumentation
+	lambda.Start(otellambda.InstrumentHandler(handler))
 }

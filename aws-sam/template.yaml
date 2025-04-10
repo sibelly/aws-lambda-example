@@ -15,7 +15,7 @@ Resources:
         Variables:
           OTEL_SERVICE_NAME: lambda-go
           OTEL_EXPORTER: otlp
-          OTEL_EXPORTER_OTLP_ENDPOINT: otlphttp.devsecops.internal.klever.io
+          OTEL_EXPORTER_OTLP_ENDPOINT: yourendpoint
           OTEL_TRACES_SAMPLER: always_on
           OTEL_TRACES_SAMPLER_ARG: 1
 
